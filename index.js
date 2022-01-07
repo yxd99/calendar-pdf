@@ -1,33 +1,52 @@
 const fs = require('fs');
 const pdf = require('html-pdf-node');
+const { number, select, confirm } = require('./helpers/inquirer.js');
 const { getDate, createCalendarHTML } = require('./helpers/functions.js');
+const { nameMonths } = require('./helpers/dictionary.js');
 
-const year = 2022;
+(async () => {
+    console.log('Exportación de calendario en PDF!');
+    const year = await number('Ingrese el año para obtener el calendario:');
+    let option = await confirm('¿Desea exportar un mes en especifico? (Y = Si | N = No)');
 
-const dir = `./calendar-${year}`;
+    if (option) {
+        const dir = `./calendar-${year}`;
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir);
+        }
 
-if(!fs.existsSync(dir)){
-    fs.mkdirSync(dir);
-}
+        const month = await select('¿Que mes desea para imprimir el calendario?', nameMonths);
+        createCalendarPdf(year, parseInt(month), false);
+    } else {
+        const dir = `./calendar-${year}`;
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir);
+        }
 
-for(let i = 0; i < 12; i++){
-    let date = getDate(year, i);
+        createCalendarPdf(year,  1);
+    }
+    console.log('Gracias por usar el sistema!');
+})();
+
+const createCalendarPdf = async (year, month, loop = true) => {
+    if(month >=13) return;
+    let date = getDate(year, month);
     content = createCalendarHTML(date);
-    let path = `${dir + '/' + date.month}.pdf`;
-    const options = {
-        path,
+
+    const file = {
+        content,
+    }
+
+    const optionsPdf = {
+        path: `./calendar-${year}/${date.month}.pdf`,
         printBackground: true,
         landscape: true,
         margin: {
             bottom: 6
         }
     };
-    const file = {
-        content
-    }
-    pdf.generatePdf(file, options).then(pdfBuffer => {
-        console.log('Archivo creado.');
+    await pdf.generatePdf(file, optionsPdf).then(pdfBuffer => {
+        if(!loop) return;
+        createCalendarPdf(year, month + 1);
     });
 }
-
-
